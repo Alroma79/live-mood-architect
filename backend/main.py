@@ -145,5 +145,5 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
 
+    print(f"Affirmation generated for: {name}")
     return {"affirmation": message}
-
