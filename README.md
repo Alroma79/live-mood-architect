@@ -129,6 +129,10 @@ Health check: `GET /health` returns `{"status":"ok"}`.
 - `.env` files are ignored by git; only `.env.example` files are tracked.
 - Backend logs are metadata-only (`request_id`, durations, lengths, status) and do not log user text.
 
+### Prompt & Safety
+
+The system prompt explicitly prohibits medical/legal advice, diagnosis, crisis counseling, and self-harm guidance. If self-harm intent is detected, the assistant responds supportively and encourages professional help.
+
 ### Known Limitations
 
 - Self-harm detection uses a simple keyword regex and can miss edge cases.
