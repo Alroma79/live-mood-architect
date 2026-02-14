@@ -1,5 +1,7 @@
 import os
 import re
+import time
+import uuid
 from typing import Final
 
 from fastapi import FastAPI
@@ -88,6 +90,9 @@ def create_affirmation(payload: AffirmationRequest):
             )
         }
 
+    request_id = uuid.uuid4().hex[:8]
+    started = time.perf_counter()
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return JSONResponse(
@@ -145,5 +150,10 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
 
-    print(f"Affirmation generated for: {name}")
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    print(
+        f"[affirmation] ok request_id={request_id} "
+        f"duration_ms={duration_ms} model={os.getenv('OPENAI_MODEL', 'gpt-4o-mini')} "
+        f"name_len={len(name)} feeling_len={len(feeling)}"
+    )
     return {"affirmation": message}
