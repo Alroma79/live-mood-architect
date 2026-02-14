@@ -66,6 +66,22 @@ def contains_self_harm_intent(text: str) -> bool:
     return bool(SELF_HARM_PATTERN.search(text))
 
 
+def log_affirmation_event(
+    status: str,
+    request_id: str,
+    started: float,
+    model: str,
+    name: str,
+    feeling: str,
+) -> None:
+    duration_ms = int((time.perf_counter() - started) * 1000)
+    print(
+        f"[affirmation] {status} request_id={request_id} "
+        f"duration_ms={duration_ms} model={model} "
+        f"name_len={len(name)} feeling_len={len(feeling)}"
+    )
+
+
 @app.post("/api/affirmation")
 def create_affirmation(payload: AffirmationRequest):
     name = payload.name.strip()
@@ -79,7 +95,12 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
 
+    request_id = uuid.uuid4().hex[:8]
+    started = time.perf_counter()
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
     if contains_self_harm_intent(f"{name} {feeling}"):
+        log_affirmation_event("ok", request_id, started, model, name, feeling)
         return {
             "affirmation": (
                 "I'm really glad you reached out. You matter, and you deserve support right now. "
@@ -90,11 +111,9 @@ def create_affirmation(payload: AffirmationRequest):
             )
         }
 
-    request_id = uuid.uuid4().hex[:8]
-    started = time.perf_counter()
-
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
+        log_affirmation_event("fail", request_id, started, model, name, feeling)
         return JSONResponse(
             status_code=500,
             content={
@@ -111,7 +130,7 @@ def create_affirmation(payload: AffirmationRequest):
 
     try:
         completion = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_MESSAGE},
                 {"role": "user", "content": user_message},
@@ -120,6 +139,7 @@ def create_affirmation(payload: AffirmationRequest):
             max_tokens=180,
         )
     except APITimeoutError:
+        log_affirmation_event("fail", request_id, started, model, name, feeling)
         return JSONResponse(
             status_code=504,
             content={
@@ -127,6 +147,7 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
     except (APIConnectionError, APIStatusError):
+        log_affirmation_event("fail", request_id, started, model, name, feeling)
         return JSONResponse(
             status_code=502,
             content={
@@ -134,6 +155,7 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
     except Exception:
+        log_affirmation_event("fail", request_id, started, model, name, feeling)
         return JSONResponse(
             status_code=502,
             content={
@@ -143,6 +165,7 @@ def create_affirmation(payload: AffirmationRequest):
 
     message = (completion.choices[0].message.content or "").strip()
     if not message:
+        log_affirmation_event("fail", request_id, started, model, name, feeling)
         return JSONResponse(
             status_code=502,
             content={
@@ -150,10 +173,5 @@ def create_affirmation(payload: AffirmationRequest):
             },
         )
 
-    duration_ms = int((time.perf_counter() - started) * 1000)
-    print(
-        f"[affirmation] ok request_id={request_id} "
-        f"duration_ms={duration_ms} model={os.getenv('OPENAI_MODEL', 'gpt-4o-mini')} "
-        f"name_len={len(name)} feeling_len={len(feeling)}"
-    )
+    log_affirmation_event("ok", request_id, started, model, name, feeling)
     return {"affirmation": message}
