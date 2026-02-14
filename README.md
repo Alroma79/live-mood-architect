@@ -1,25 +1,25 @@
 # Live Mood Architect
 
-Full-stack app with a FastAPI backend and a Vite + React frontend.
+Full-stack app with a FastAPI backend (Railway) and a Vite + React frontend (Vercel).
 
 ## Environment Variables
 
 ### Backend (`backend/.env`)
 
-- `OPENAI_API_KEY` (required): OpenAI API key.
-- `FRONTEND_ORIGIN` (required in deployed environments): allowed CORS origin(s). Use comma-separated values when needed.
+- `OPENAI_API_KEY` (required)
+- `FRONTEND_ORIGIN` (required in deployed environments, comma-separated if multiple)
   - Example: `http://localhost:5173,https://your-vercel-app.vercel.app`
-- `OPENAI_MODEL` (optional): defaults to `gpt-4o-mini`.
+- `OPENAI_MODEL` (optional, default: `gpt-4o-mini`)
 
 ### Frontend (`frontend/.env`)
 
-- `VITE_API_BASE_URL` (required): backend base URL.
-  - Local default: `http://127.0.0.1:8000`
-  - Production example: `https://live-mood-architect-production.up.railway.app`
+- `VITE_API_BASE_URL` (required)
+  - Local: `http://127.0.0.1:8000`
+  - Production: `https://live-mood-architect-production.up.railway.app` (no trailing slash)
 
-## Local Setup
+## Local Setup (One-Time)
 
-### Backend Setup (one-time)
+### Backend
 
 ```powershell
 cd backend
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-### Frontend Setup (one-time)
+### Frontend
 
 ```powershell
 cd frontend
@@ -39,21 +39,46 @@ Copy-Item .env.example .env
 
 ## Run Locally
 
-### Backend (single command after setup)
+### Backend (single command)
 
 ```powershell
 cd backend; .\.venv\Scripts\Activate.ps1; uvicorn main:app --reload
 ```
 
-### Frontend (single command after setup)
+### Frontend (single command)
 
 ```powershell
 cd frontend; npm run dev
 ```
 
-## API Verification
+## Deploy
 
-### `curl` example
+### Railway (Backend)
+
+1. Create/use a Railway service for this repo.
+2. Set service **Root Directory** to `backend`.
+3. Set **Start Command** to:
+   - `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Set required env vars:
+   - `OPENAI_API_KEY`
+   - `FRONTEND_ORIGIN` (must include your Vercel app URL and any local origins you use)
+5. Optional env var:
+   - `OPENAI_MODEL`
+
+The start command above explicitly binds `0.0.0.0` and listens on Railway-provided `$PORT`.
+
+### Vercel (Frontend)
+
+1. Import this repo in Vercel.
+2. Set project **Root Directory** to `frontend`.
+3. Set env var:
+   - `VITE_API_BASE_URL=https://live-mood-architect-production.up.railway.app`
+4. Ensure there is **no trailing slash** in `VITE_API_BASE_URL`.
+5. Deploy.
+
+## Verification
+
+### `curl` (backend endpoint)
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/affirmation" \
@@ -61,7 +86,7 @@ curl -X POST "http://127.0.0.1:8000/api/affirmation" \
   -d "{\"name\":\"Alex\",\"feeling\":\"a little overwhelmed but hopeful\"}"
 ```
 
-### PowerShell example
+### PowerShell (backend endpoint)
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/affirmation" `
@@ -69,23 +94,43 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/api/affirmation" `
   -Body '{"name":"Alex","feeling":"a little overwhelmed but hopeful"}'
 ```
 
+### Browser DevTools (frontend to backend)
+
+1. Open deployed frontend in browser.
+2. Submit the form once.
+3. Open DevTools -> Network.
+4. Confirm `POST /api/affirmation` returns `200 OK`.
+5. Confirm response contains JSON with `affirmation`.
+
 Health check: `GET /health` returns `{"status":"ok"}`.
 
-## Deployment Notes
+## Submission Notes
 
-### Railway (backend)
+### Architecture (ASCII)
 
-- Service root directory: `/backend`
-- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Required env vars:
-  - `OPENAI_API_KEY`
-  - `FRONTEND_ORIGIN` (must include your Vercel URL)
-- Optional env var:
-  - `OPENAI_MODEL`
+```text
+[User Browser]
+      |
+      v
+[Vercel Frontend: React/Vite]
+      |
+      | POST /api/affirmation
+      v
+[Railway Backend: FastAPI]
+      |
+      | chat.completions.create
+      v
+[OpenAI API]
+```
 
-### Vercel (frontend)
+### Security Notes
 
-- Required env var:
-  - `VITE_API_BASE_URL` (set to your Railway backend URL)
+- Secrets are environment variables only (`OPENAI_API_KEY` is never committed).
+- `.env` files are ignored by git; only `.env.example` files are tracked.
+- Backend logs are metadata-only (`request_id`, durations, lengths, status) and do not log user text.
 
-If the frontend shows "cannot reach server", ensure the backend is running/reachable and that `FRONTEND_ORIGIN` includes your Vercel domain and local dev origin.
+### Known Limitations
+
+- Self-harm detection uses a simple keyword regex and can miss edge cases.
+- No persistent storage yet (requests and outputs are not stored).
+- No automated test suite is included yet for endpoint-level regression checks.
