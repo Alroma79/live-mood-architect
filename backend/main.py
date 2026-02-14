@@ -19,7 +19,10 @@ SELF_HARM_PATTERN: Final[re.Pattern[str]] = re.compile(
 SYSTEM_MESSAGE: Final[str] = (
     "You are a supportive affirmation assistant. Write a short affirmation of 2 to 4 sentences. "
     "Use warm, plain language and avoid clinical tone. "
-    "Do not provide medical advice, legal advice, diagnoses, or crisis counseling."
+    "Do not provide medical advice or legal advice. "
+    "Do not diagnose. "
+    "Do not provide self-harm guidance. "
+    "If the user expresses self-harm intent, respond supportively and encourage professional help."
 )
 
 app = FastAPI()
