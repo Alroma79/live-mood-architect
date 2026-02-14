@@ -76,7 +76,7 @@ def log_affirmation_event(
 ) -> None:
     duration_ms = int((time.perf_counter() - started) * 1000)
     print(
-        f"[affirmation] {status} request_id={request_id} "
+        f"[affirmation] status={status} request_id={request_id} "
         f"duration_ms={duration_ms} model={model} "
         f"name_len={len(name)} feeling_len={len(feeling)}"
     )
